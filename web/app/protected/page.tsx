@@ -23,7 +23,18 @@ export default async function ProtectedPage() {
       {/* Header */}
       <header className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">🏆⚽</span>
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.display_name ?? 'Avatar'}
+              className="w-12 h-12 rounded-full border-2 border-blue-200"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600">
+              {profile?.display_name?.[0]?.toUpperCase() ?? '⚽'}
+            </div>
+          )}
           <div>
             <h1 className="text-xl font-bold text-slate-900">El Parche Mundialista</h1>
             <p className="text-sm text-slate-600">
