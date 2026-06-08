@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft, Settings, Trophy } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getGroupById } from '@/lib/groups/queries';
 import { InviteCodeDisplay } from '@/components/groups/invite-code-display';
@@ -24,20 +24,12 @@ export default async function GrupoDetallePage({
 
   const { group, role, members } = data;
 
-  // Colores para avatares según índice
   const avatarColors = [
-    'bg-blue-500',
-    'bg-purple-500',
-    'bg-pink-500',
-    'bg-amber-500',
-    'bg-emerald-500',
-    'bg-rose-500',
-    'bg-indigo-500',
-    'bg-teal-500',
+    'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-amber-500',
+    'bg-emerald-500', 'bg-rose-500', 'bg-indigo-500', 'bg-teal-500',
   ];
 
   function getAvatarColor(userId: string): string {
-    // Determinístico: misma persona, mismo color
     const hash = userId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     return avatarColors[hash % avatarColors.length];
   }
@@ -54,8 +46,6 @@ export default async function GrupoDetallePage({
     if (diffDays < 7) return `hace ${diffDays} ${diffDays === 1 ? 'día' : 'días'}`;
     return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
   }
-
-  const isCreator = group.created_by === user.id;
 
   return (
     <main className="min-h-screen container mx-auto px-4 py-8 max-w-2xl">
@@ -87,6 +77,19 @@ export default async function GrupoDetallePage({
           </Link>
         )}
       </div>
+
+      {/* Botón tabla de posiciones */}
+      <Link
+        href={`/grupos/${group.id}/tabla`}
+        className="flex items-center gap-3 p-4 my-4 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition"
+      >
+        <Trophy className="w-6 h-6 text-amber-600" />
+        <div className="flex-1">
+          <p className="font-semibold text-amber-900">Tabla de posiciones</p>
+          <p className="text-xs text-amber-700">Mira quién va ganando en el grupo</p>
+        </div>
+        <span className="text-amber-600">→</span>
+      </Link>
 
       {/* Código de invitación */}
       <InviteCodeDisplay code={group.invite_code} />
@@ -137,7 +140,7 @@ export default async function GrupoDetallePage({
         ))}
       </div>
 
-      {/* Botón salir (no se muestra si es el creador único admin) */}
+      {/* Botón salir */}
       <div className="mt-6">
         <LeaveGroupButton groupId={group.id} groupName={group.name} />
       </div>
