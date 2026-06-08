@@ -1,11 +1,12 @@
 -- ============================================================
--- Migración 011 (CORREGIDA): RPC para tabla de posiciones
+-- Migración 011 (CORREGIDA v2): RPC para tabla de posiciones
 -- ============================================================
--- Corrige el error "column reference user_id is ambiguous":
--- calificamos las columnas con su tabla/vista de origen.
+-- Corrige dos errores:
+--   1. "column reference user_id is ambiguous" → alias gm.user_id
+--   2. "Returned type integer does not match expected type bigint"
+--      → cast explícito de todas las columnas numéricas a BIGINT
 --
--- Si ya aplicaste la versión anterior de la 011, esta la
--- reemplaza (CREATE OR REPLACE).
+-- Usa CREATE OR REPLACE, así que reemplaza la versión anterior.
 --
 -- Dependencias: 001_initial_schema.sql, 007_fix_rls_recursion.sql
 -- ============================================================
@@ -31,9 +32,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- Validar que el usuario actual es miembro del grupo.
-  -- Calificamos gm.user_id explícitamente para evitar ambigüedad
-  -- con la columna user_id que esta función retorna.
+  -- Validar que el usuario actual es miembro del grupo
   IF NOT EXISTS (
     SELECT 1 FROM group_members gm
     WHERE gm.group_id = p_group_id
@@ -47,11 +46,12 @@ BEGIN
     gl.user_id,
     gl.display_name,
     gl.avatar_url,
-    gl.total_points,
-    gl.exact_count,
-    gl.diff_count,
-    gl.advance_count,
-    gl.special_points,
+    -- Cast explícito a BIGINT para que coincida con el tipo declarado
+    gl.total_points::BIGINT,
+    gl.exact_count::BIGINT,
+    gl.diff_count::BIGINT,
+    gl.advance_count::BIGINT,
+    gl.special_points::BIGINT,
     gl.joined_at,
     ROW_NUMBER() OVER (
       ORDER BY
@@ -61,18 +61,17 @@ BEGIN
         gl.special_points DESC,
         gl.advance_count DESC,
         gl.joined_at ASC
-    ) AS rank
+    )::BIGINT AS rank
   FROM group_leaderboard gl
   WHERE gl.group_id = p_group_id;
 END;
 $$;
 
 COMMENT ON FUNCTION get_group_leaderboard IS
-'Devuelve la tabla de posiciones de un grupo con ranking calculado. Valida que el usuario actual sea miembro. SECURITY DEFINER para leer la vista sin problemas de RLS.';
+'Devuelve la tabla de posiciones de un grupo con ranking calculado. Valida membresía. SECURITY DEFINER + casts BIGINT explícitos.';
 
 GRANT EXECUTE ON FUNCTION get_group_leaderboard(INTEGER) TO authenticated;
 
--- Registrar (idempotente; ya existe la 011 pero por si acaso)
 INSERT INTO schema_migrations (version, description)
 VALUES ('011', 'RPC function get_group_leaderboard with membership validation and ranking')
 ON CONFLICT (version) DO NOTHING;
@@ -80,7 +79,8 @@ ON CONFLICT (version) DO NOTHING;
 COMMIT;
 
 -- ============================================================
--- Verificación
+-- Verificación (desde la APP, no desde SQL Editor)
 -- ============================================================
--- SELECT * FROM get_group_leaderboard(N);  -- reemplaza N por tu group_id
--- Ya no debe dar el error "column reference user_id is ambiguous"
+-- En el SQL Editor saldrá "No tienes acceso a este grupo" porque
+-- auth.uid() es NULL ahí. Eso es NORMAL. Prueba desde la app
+-- recargando /grupos/[id]/tabla
