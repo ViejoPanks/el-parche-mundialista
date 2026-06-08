@@ -88,14 +88,6 @@ export function MatchCard({ match }: { match: Match }) {
           <span className="truncate">{match.venue}</span>
         </div>
       )}
-
-      {isScheduled && (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <p className="text-xs text-slate-500 italic">
-            Predicciones disponibles en la pestaña "Mis predicciones"
-          </p>
-        </div>
-      )}
     </div>
   );
 }

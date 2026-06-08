@@ -60,14 +60,6 @@ export default async function PartidosPage() {
           ))}
         </div>
       )}
-
-      {/* Footer info */}
-      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-        <p className="text-sm font-medium text-blue-900 mb-1">📝 Próximamente</p>
-        <p className="text-xs text-blue-700">
-          En el siguiente sprint podrás hacer tus predicciones desde cada partido.
-        </p>
-      </div>
     </main>
   );
 }
