@@ -1,21 +1,16 @@
 -- ============================================================
--- Migración 011: Función RPC para tabla de posiciones
+-- Migración 011 (CORREGIDA): RPC para tabla de posiciones
 -- ============================================================
--- La vista group_leaderboard (Sprint 1) hace JOINs entre
--- group_members, profiles, predictions y special_predictions.
--- Para evitar problemas de RLS al leerla desde el frontend y
--- garantizar que solo veas los grupos donde eres miembro,
--- creamos una función SECURITY DEFINER que devuelve el
--- leaderboard de un grupo específico, validando membresía.
+-- Corrige el error "column reference user_id is ambiguous":
+-- calificamos las columnas con su tabla/vista de origen.
+--
+-- Si ya aplicaste la versión anterior de la 011, esta la
+-- reemplaza (CREATE OR REPLACE).
 --
 -- Dependencias: 001_initial_schema.sql, 007_fix_rls_recursion.sql
 -- ============================================================
 
 BEGIN;
-
--- ============================================================
--- Función: leaderboard de un grupo (con validación de membresía)
--- ============================================================
 
 CREATE OR REPLACE FUNCTION get_group_leaderboard(p_group_id INTEGER)
 RETURNS TABLE (
@@ -36,10 +31,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- Validar que el usuario actual es miembro del grupo
+  -- Validar que el usuario actual es miembro del grupo.
+  -- Calificamos gm.user_id explícitamente para evitar ambigüedad
+  -- con la columna user_id que esta función retorna.
   IF NOT EXISTS (
-    SELECT 1 FROM group_members
-    WHERE group_id = p_group_id AND user_id = auth.uid()
+    SELECT 1 FROM group_members gm
+    WHERE gm.group_id = p_group_id
+      AND gm.user_id = auth.uid()
   ) THEN
     RAISE EXCEPTION 'No tienes acceso a este grupo';
   END IF;
@@ -74,10 +72,7 @@ COMMENT ON FUNCTION get_group_leaderboard IS
 
 GRANT EXECUTE ON FUNCTION get_group_leaderboard(INTEGER) TO authenticated;
 
-
--- ============================================================
--- Registrar migración aplicada
--- ============================================================
+-- Registrar (idempotente; ya existe la 011 pero por si acaso)
 INSERT INTO schema_migrations (version, description)
 VALUES ('011', 'RPC function get_group_leaderboard with membership validation and ranking')
 ON CONFLICT (version) DO NOTHING;
@@ -87,6 +82,5 @@ COMMIT;
 -- ============================================================
 -- Verificación
 -- ============================================================
--- Como miembro de un grupo (reemplaza N por un group_id real):
--- SELECT * FROM get_group_leaderboard(N);
--- Debería devolver las filas ordenadas con la columna rank (1, 2, 3...)
+-- SELECT * FROM get_group_leaderboard(N);  -- reemplaza N por tu group_id
+-- Ya no debe dar el error "column reference user_id is ambiguous"
