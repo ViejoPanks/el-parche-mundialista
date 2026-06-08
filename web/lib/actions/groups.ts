@@ -6,6 +6,19 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 
 // ============================================================
+// TIPO de la fila que devuelven los RPC create/join
+// ============================================================
+
+interface GroupRow {
+  id: number;
+  name: string;
+  description: string | null;
+  invite_code: string;
+  created_by: string;
+  created_at: string;
+}
+
+// ============================================================
 // SCHEMAS DE VALIDACIÓN (con Zod)
 // ============================================================
 
@@ -48,8 +61,6 @@ const groupIdSchema = z.object({
 // ============================================================
 // TIPO DE RESULTADO ESTÁNDAR
 // ============================================================
-// Todos los Server Actions devuelven { success, error?, data? }
-// para manejo consistente desde el cliente.
 
 export type ActionResult<T = unknown> =
   | { success: true; data: T }
@@ -64,7 +75,6 @@ export async function createGroup(
 ): Promise<ActionResult<{ groupId: number; inviteCode: string }>> {
   const supabase = createClient();
 
-  // Verificar autenticación
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -73,7 +83,6 @@ export async function createGroup(
     return { success: false, error: 'Debes iniciar sesión' };
   }
 
-  // Validar input
   const parsed = createGroupSchema.safeParse({
     name: formData.get('name'),
     description: formData.get('description'),
@@ -86,13 +95,12 @@ export async function createGroup(
     };
   }
 
-  // Llamar a la función RPC que crea grupo + agrega admin atómicamente
   const { data, error } = await supabase
     .rpc('create_group_with_admin', {
       p_name: parsed.data.name,
       p_description: parsed.data.description || null,
     })
-    .single();
+    .single<GroupRow>();
 
   if (error) {
     console.error('Error creating group:', error);
@@ -103,14 +111,13 @@ export async function createGroup(
     return { success: false, error: 'Error inesperado al crear el grupo' };
   }
 
-  // Refrescar la lista de grupos
   revalidatePath('/grupos');
 
   return {
     success: true,
     data: {
-      groupId: data.id as number,
-      inviteCode: data.invite_code as string,
+      groupId: data.id,
+      inviteCode: data.invite_code,
     },
   };
 }
@@ -147,12 +154,11 @@ export async function joinGroup(
     .rpc('join_group_by_code', {
       p_invite_code: parsed.data.inviteCode,
     })
-    .single();
+    .single<GroupRow>();
 
   if (error) {
     console.error('Error joining group:', error);
 
-    // Mapear errores conocidos de Postgres a mensajes amigables
     const message = error.message ?? '';
     if (message.includes('Código de invitación inválido')) {
       return { success: false, error: 'El código no existe. Verifica que esté bien escrito.' };
@@ -176,8 +182,8 @@ export async function joinGroup(
   return {
     success: true,
     data: {
-      groupId: data.id as number,
-      groupName: data.name as string,
+      groupId: data.id,
+      groupName: data.name,
     },
   };
 }
@@ -207,7 +213,6 @@ export async function leaveGroup(
     return { success: false, error: 'Grupo inválido' };
   }
 
-  // Verificar que NO sea el único admin
   const { data: members } = await supabase
     .from('group_members')
     .select('user_id, role')
@@ -230,7 +235,6 @@ export async function leaveGroup(
     };
   }
 
-  // Eliminar la membresía
   const { error } = await supabase
     .from('group_members')
     .delete()
@@ -271,7 +275,6 @@ export async function deleteGroup(
     return { success: false, error: 'Grupo inválido' };
   }
 
-  // El RLS valida que solo el admin pueda hacer DELETE
   const { error } = await supabase
     .from('groups')
     .delete()
@@ -319,7 +322,6 @@ export async function updateGroup(
     };
   }
 
-  // RLS valida que solo el admin pueda hacer UPDATE
   const { error } = await supabase
     .from('groups')
     .update({
@@ -343,7 +345,6 @@ export async function updateGroup(
 // ============================================================
 // REGENERAR CÓDIGO DE INVITACIÓN (solo admin)
 // ============================================================
-// Útil si el código se filtró y el admin quiere bloquear nuevos ingresos.
 
 export async function regenerateInviteCode(
   formData: FormData
@@ -366,17 +367,15 @@ export async function regenerateInviteCode(
     return { success: false, error: 'Grupo inválido' };
   }
 
-  // Generar nuevo código vía función SQL (la misma del trigger)
   const { data: codeResult } = await supabase.rpc('generate_invite_code');
 
   if (!codeResult) {
     return { success: false, error: 'No se pudo generar nuevo código' };
   }
 
-  // Actualizar el grupo (RLS valida que solo admin pueda)
   const { error } = await supabase
     .from('groups')
-    .update({ invite_code: codeResult })
+    .update({ invite_code: codeResult as string })
     .eq('id', parsed.data.groupId);
 
   if (error) {
