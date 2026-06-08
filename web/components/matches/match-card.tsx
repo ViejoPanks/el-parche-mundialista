@@ -1,5 +1,5 @@
-import type { Match } from '@/lib/matches/queries';
-import { formatMatchTime } from '@/lib/matches/queries';
+import type { Match } from '@/lib/matches/utils';
+import { formatMatchTime } from '@/lib/matches/utils';
 import { MapPin, Circle } from 'lucide-react';
 
 export function MatchCard({ match }: { match: Match }) {
@@ -21,7 +21,6 @@ export function MatchCard({ match }: { match: Match }) {
           )}
         </div>
 
-        {/* Estado del partido */}
         {isLive && (
           <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded font-medium">
             <Circle className="w-2 h-2 fill-current animate-pulse" />
@@ -37,7 +36,6 @@ export function MatchCard({ match }: { match: Match }) {
 
       {/* Equipos y marcador */}
       <div className="space-y-2">
-        {/* Local */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {match.team_local?.flag_url ? (
@@ -60,7 +58,6 @@ export function MatchCard({ match }: { match: Match }) {
           )}
         </div>
 
-        {/* Visitante */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {match.team_visitante?.flag_url ? (
@@ -92,11 +89,10 @@ export function MatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      {/* Indicador de "puedes predecir" (placeholder, vendrá en Parte C) */}
       {isScheduled && (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <p className="text-xs text-slate-500 italic">
-            Predicciones disponibles próximamente
+            Predicciones disponibles en la pestaña "Mis predicciones"
           </p>
         </div>
       )}

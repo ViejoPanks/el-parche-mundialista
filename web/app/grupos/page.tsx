@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Plus, Ticket, Users, Calendar, Star } from 'lucide-react';
+import { Plus, Ticket, Users, Calendar, Star, Target } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getMyGroups } from '@/lib/groups/queries';
 import { GroupCard } from '@/components/groups/group-card';
@@ -48,11 +48,11 @@ export default async function GruposPage() {
       {/* Quick links */}
       <div className="flex flex-wrap gap-2 mb-6">
         <Link
-          href="/partidos"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
+          href="/predicciones"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-300 text-blue-900 text-sm font-medium rounded-lg hover:bg-blue-100 transition"
         >
-          <Calendar className="w-4 h-4" />
-          Ver fixture
+          <Target className="w-4 h-4" />
+          Mis predicciones
         </Link>
         <Link
           href="/predicciones-especiales"
@@ -60,6 +60,13 @@ export default async function GruposPage() {
         >
           <Star className="w-4 h-4" />
           Predicciones especiales
+        </Link>
+        <Link
+          href="/partidos"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
+        >
+          <Calendar className="w-4 h-4" />
+          Ver fixture
         </Link>
       </div>
 
