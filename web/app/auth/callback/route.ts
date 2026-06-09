@@ -16,8 +16,29 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/protected';
 
+  // En producción detrás de un proxy (Vercel), `origin` derivado de
+  // request.url puede ser el host interno y no el dominio público.
+  // Usamos x-forwarded-host cuando está disponible para construir la
+  // URL de redirección correcta.
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https';
+  const isLocalEnv = process.env.NODE_ENV === 'development';
+
+  function buildRedirectUrl(path: string): string {
+    if (isLocalEnv) {
+      // En local, origin es confiable (http://localhost:3000)
+      return `${origin}${path}`;
+    }
+    if (forwardedHost) {
+      // En producción, usar el host público que pone el proxy
+      return `${forwardedProto}://${forwardedHost}${path}`;
+    }
+    // Fallback
+    return `${origin}${path}`;
+  }
+
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=No code provided`);
+    return NextResponse.redirect(buildRedirectUrl('/login?error=No code provided'));
   }
 
   const supabase = createClient();
@@ -25,7 +46,7 @@ export async function GET(request: Request) {
 
   if (error) {
     return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(error.message)}`
+      buildRedirectUrl(`/login?error=${encodeURIComponent(error.message)}`)
     );
   }
 
@@ -39,7 +60,6 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (!existingProfile) {
-      // Crear perfil con datos de Google (full_name, avatar_url) o display_name del signup
       const displayName =
         user.user_metadata.display_name ||
         user.user_metadata.full_name ||
@@ -57,5 +77,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  return NextResponse.redirect(buildRedirectUrl(next));
 }
