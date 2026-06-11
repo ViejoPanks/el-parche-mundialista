@@ -308,13 +308,16 @@ function ScoreInput({
   return (
     <input
       type="number"
+      inputMode="numeric"
+      pattern="[0-9]*"
       min={0}
       max={20}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label={ariaLabel}
       placeholder="-"
-      className="w-14 px-2 py-1.5 text-center font-mono text-lg font-semibold border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      className="w-14 px-2 py-1.5 text-center font-mono text-lg font-semibold text-slate-900 bg-white placeholder:text-slate-400 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+      style={{ WebkitTextFillColor: '#0f172a' }}
     />
   );
 }
