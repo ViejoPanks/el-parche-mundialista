@@ -39,6 +39,8 @@ export async function getMatchesWithMyPredictions(): Promise<PredictionsByDay[]>
         id, name, code, flag_url, group_name
       )
     `)
+    .not('team_local_id', 'is', null)
+    .not('team_visitante_id', 'is', null)
     .order('kickoff_at', { ascending: true });
 
   if (matchesError) {
