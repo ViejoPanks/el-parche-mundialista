@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Plus, Ticket, Users, Calendar, Star, Target } from 'lucide-react';
+import { Plus, Ticket, Users, Calendar, Star, Target, BookOpen } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getMyGroups } from '@/lib/groups/queries';
 import { GroupCard } from '@/components/groups/group-card';
@@ -67,6 +67,13 @@ export default async function GruposPage() {
         >
           <Calendar className="w-4 h-4" />
           Ver fixture
+        </Link>
+        <Link
+          href="/reglas"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
+        >
+          <BookOpen className="w-4 h-4" />
+          Cómo se juega
         </Link>
       </div>
 

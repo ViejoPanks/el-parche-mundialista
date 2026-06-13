@@ -4,6 +4,7 @@ import { ArrowLeft, Trophy } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getGroupById } from '@/lib/groups/queries';
 import { getGroupLeaderboard } from '@/lib/leaderboard/queries';
+import { ScoringSummary } from '@/components/reglas/scoring-summary';
 import { LeaderboardTable } from '@/components/leaderboard/leaderboard-table';
 
 export default async function TablaPage({
@@ -41,6 +42,7 @@ export default async function TablaPage({
       </div>
       <p className="text-sm text-slate-600 mb-6">{group.name}</p>
 
+      <ScoringSummary />
       <LeaderboardTable entries={leaderboard} currentUserId={user.id} />
 
       {/* Leyenda */}
