@@ -14,7 +14,9 @@ export function MatchCard({ match }: { match: Match }) {
       <div className="flex items-center justify-between mb-3 text-xs">
         <div className="flex items-center gap-2">
           <span className="font-mono font-semibold text-slate-700">{time}</span>
-          {match.team_local?.group_name && (
+          {/* El grupo solo aplica en fase de grupos. En knockout la fase
+              ya se muestra en el encabezado de sección (getPhaseMeta). */}
+          {match.phase === 'group' && match.team_local?.group_name && (
             <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-medium">
               Grupo {match.team_local.group_name}
             </span>

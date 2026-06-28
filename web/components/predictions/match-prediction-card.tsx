@@ -6,9 +6,34 @@ import { Loader2, Check, Lock, Trophy, MapPin, Clock } from 'lucide-react';
 import { savePrediction } from '@/lib/actions/predictions';
 import type { MatchWithPrediction } from '@/lib/predictions/types';
 import { formatMatchTime } from '@/lib/matches/utils';
+import { getPhaseMeta } from '@/lib/matches/phases';
 
 interface Props {
   item: MatchWithPrediction;
+}
+
+// ============================================================
+// Etiqueta de fase / grupo
+// En fase de grupos muestra "Grupo A"; en knockout muestra el
+// nombre de la ronda tomado de getPhaseMeta (fuente única).
+// Devuelve null si no hay nada que mostrar.
+// ============================================================
+function getStageLabel(match: MatchWithPrediction['match']): string | null {
+  if (match.phase === 'group') {
+    return match.team_local?.group_name
+      ? `Grupo ${match.team_local.group_name}`
+      : null;
+  }
+  return getPhaseMeta(match.phase).label;
+}
+
+function StageBadge({ label }: { label: string | null }) {
+  if (!label) return null;
+  return (
+    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-medium">
+      {label}
+    </span>
+  );
 }
 
 export function MatchPredictionCard({ item }: Props) {
@@ -27,6 +52,7 @@ export function MatchPredictionCard({ item }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const time = formatMatchTime(match.kickoff_at);
+  const stageLabel = getStageLabel(match);
   const isFinished = match.status === 'finished';
   const isLive = match.status === 'live';
   const hasPrediction = prediction !== null;
@@ -74,11 +100,7 @@ export function MatchPredictionCard({ item }: Props) {
         <div className="flex items-center justify-between mb-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-mono font-semibold text-slate-700">{time}</span>
-            {match.team_local?.group_name && (
-              <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-medium">
-                Grupo {match.team_local.group_name}
-              </span>
-            )}
+            <StageBadge label={stageLabel} />
           </div>
           {isLive ? (
             <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded font-medium animate-pulse">
@@ -147,11 +169,7 @@ export function MatchPredictionCard({ item }: Props) {
         <div className="flex items-center justify-between mb-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-mono font-semibold text-slate-700">{time}</span>
-            {match.team_local?.group_name && (
-              <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-medium">
-                Grupo {match.team_local.group_name}
-              </span>
-            )}
+            <StageBadge label={stageLabel} />
           </div>
           <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-medium">
             <Lock className="w-3 h-3" />
@@ -193,11 +211,7 @@ export function MatchPredictionCard({ item }: Props) {
         <div className="flex items-center gap-2">
           <Clock className="w-3 h-3 text-slate-500" />
           <span className="font-mono font-semibold text-slate-700">{time}</span>
-          {match.team_local?.group_name && (
-            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-medium">
-              Grupo {match.team_local.group_name}
-            </span>
-          )}
+          <StageBadge label={stageLabel} />
         </div>
         {hasPrediction ? (
           <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">
