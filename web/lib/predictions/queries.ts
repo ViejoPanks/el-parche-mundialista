@@ -108,9 +108,12 @@ export async function getPredictionsSummary(): Promise<{
     return { totalMatches: 0, predictedCount: 0, upcomingOpenCount: 0 };
   }
 
+  // Solo partidos predecibles: con ambos equipos definidos
   const { count: totalMatches } = await supabase
     .from('matches')
-    .select('*', { count: 'exact', head: true });
+    .select('*', { count: 'exact', head: true })
+    .not('team_local_id', 'is', null)
+    .not('team_visitante_id', 'is', null);
 
   const { count: predictedCount } = await supabase
     .from('predictions')
@@ -121,6 +124,8 @@ export async function getPredictionsSummary(): Promise<{
   const { count: openCount } = await supabase
     .from('matches')
     .select('*', { count: 'exact', head: true })
+    .not('team_local_id', 'is', null)
+    .not('team_visitante_id', 'is', null)
     .gt('kickoff_at', nowIso);
 
   return {
