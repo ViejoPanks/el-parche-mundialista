@@ -9,6 +9,7 @@ export interface MyPrediction {
   match_id: number;
   pred_local: number;
   pred_visitante: number;
+  pred_winner_advance: number | null;
   points_earned: number;
   is_exact: boolean;
   is_diff_correct: boolean;

@@ -52,7 +52,7 @@ export async function getMatchesWithMyPredictions(): Promise<PredictionsByDay[]>
 
   const { data: predictionsData, error: predError } = await supabase
     .from('predictions')
-    .select('match_id, pred_local, pred_visitante, points_earned, is_exact, is_diff_correct, updated_at')
+    .select('match_id, pred_local, pred_visitante, pred_winner_advance, points_earned, is_exact, is_diff_correct, updated_at')
     .eq('user_id', user.id);
 
   if (predError) {

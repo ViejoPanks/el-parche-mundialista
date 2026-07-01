@@ -12,13 +12,12 @@ interface Props {
   item: MatchWithPrediction;
 }
 
+type CardMatch = MatchWithPrediction['match'];
+
 // ============================================================
-// Etiqueta de fase / grupo
-// En fase de grupos muestra "Grupo A"; en knockout muestra el
-// nombre de la ronda tomado de getPhaseMeta (fuente única).
-// Devuelve null si no hay nada que mostrar.
+// Fase / grupo
 // ============================================================
-function getStageLabel(match: MatchWithPrediction['match']): string | null {
+function getStageLabel(match: CardMatch): string | null {
   if (match.phase === 'group') {
     return match.team_local?.group_name
       ? `Grupo ${match.team_local.group_name}`
@@ -36,6 +35,29 @@ function StageBadge({ label }: { label: string | null }) {
   );
 }
 
+// ============================================================
+// Bonus "¿quién avanza?" (solo eliminatorias desde octavos)
+// r32 (16avos) queda excluido por decisión.
+// ============================================================
+const ADVANCE_PHASES = ['r16', 'qf', 'sf', 'third_place', 'final'];
+
+function phaseUsesAdvance(phase: string): boolean {
+  return ADVANCE_PHASES.includes(phase);
+}
+
+function advanceLabel(phase: string): string {
+  return phase === 'final' || phase === 'third_place'
+    ? '¿Quién gana?'
+    : '¿Quién avanza?';
+}
+
+function teamNameById(match: CardMatch, id: number | null): string | null {
+  if (id == null) return null;
+  if (match.team_local?.id === id) return match.team_local.name;
+  if (match.team_visitante?.id === id) return match.team_visitante.name;
+  return null;
+}
+
 export function MatchPredictionCard({ item }: Props) {
   const { match, prediction, isLocked } = item;
   const router = useRouter();
@@ -46,6 +68,10 @@ export function MatchPredictionCard({ item }: Props) {
   const [predVisitante, setPredVisitante] = useState<string>(
     prediction?.pred_visitante !== undefined ? String(prediction.pred_visitante) : ''
   );
+
+  const showAdvance = phaseUsesAdvance(match.phase);
+  const initialAdvance = prediction?.pred_winner_advance ?? null;
+  const [advanceId, setAdvanceId] = useState<number | null>(initialAdvance);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -60,10 +86,13 @@ export function MatchPredictionCard({ item }: Props) {
   const numLocal = predLocal === '' ? null : parseInt(predLocal, 10);
   const numVisitante = predVisitante === '' ? null : parseInt(predVisitante, 10);
   const isComplete = numLocal !== null && numVisitante !== null && !isNaN(numLocal) && !isNaN(numVisitante);
+
+  const advanceChanged = showAdvance && advanceId !== initialAdvance;
   const isChanged =
     prediction === null ||
     numLocal !== prediction.pred_local ||
-    numVisitante !== prediction.pred_visitante;
+    numVisitante !== prediction.pred_visitante ||
+    advanceChanged;
 
   async function handleSave() {
     if (!isComplete) return;
@@ -76,6 +105,9 @@ export function MatchPredictionCard({ item }: Props) {
     formData.set('matchId', String(match.id));
     formData.set('predLocal', String(numLocal));
     formData.set('predVisitante', String(numVisitante));
+    if (showAdvance && advanceId !== null) {
+      formData.set('predWinnerAdvance', String(advanceId));
+    }
 
     const result = await savePrediction(formData);
 
@@ -140,6 +172,14 @@ export function MatchPredictionCard({ item }: Props) {
                 </span>
               )}
             </div>
+            {showAdvance && prediction.pred_winner_advance != null && (
+              <p className="text-xs text-slate-500 mt-1">
+                Tu pase:{' '}
+                <span className="font-medium text-slate-700">
+                  {teamNameById(match, prediction.pred_winner_advance) ?? '—'}
+                </span>
+              </p>
+            )}
             {prediction.is_exact && (
               <p className="text-xs text-green-700 font-medium mt-1">🎯 Marcador exacto</p>
             )}
@@ -188,6 +228,14 @@ export function MatchPredictionCard({ item }: Props) {
             <span className="font-semibold text-slate-900">
               {prediction.pred_local} - {prediction.pred_visitante}
             </span>
+            {showAdvance && prediction.pred_winner_advance != null && (
+              <span className="block text-xs text-slate-500 mt-1">
+                Tu pase:{' '}
+                <span className="font-medium text-slate-700">
+                  {teamNameById(match, prediction.pred_winner_advance) ?? '—'}
+                </span>
+              </span>
+            )}
           </div>
         ) : (
           <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 italic">
@@ -243,6 +291,10 @@ export function MatchPredictionCard({ item }: Props) {
         </div>
       </div>
 
+      {showAdvance && (
+        <AdvanceSelector match={match} value={advanceId} onChange={setAdvanceId} />
+      )}
+
       <div className="flex items-center justify-between pt-3 border-t border-slate-100 gap-3">
         {match.venue && (
           <div className="flex items-center gap-1 text-xs text-slate-500 flex-1 min-w-0">
@@ -275,6 +327,83 @@ export function MatchPredictionCard({ item }: Props) {
 // ============================================================
 // Componentes auxiliares
 // ============================================================
+
+function AdvanceSelector({
+  match,
+  value,
+  onChange,
+}: {
+  match: CardMatch;
+  value: number | null;
+  onChange: (id: number) => void;
+}) {
+  const local = match.team_local;
+  const visitante = match.team_visitante;
+  if (!local || !visitante) return null;
+
+  return (
+    <div className="pt-3 mb-1 border-t border-slate-100">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-slate-700">
+          {advanceLabel(match.phase)}
+        </span>
+        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+          +2 pts
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <AdvanceButton
+          team={local}
+          selected={value === local.id}
+          onClick={() => onChange(local.id)}
+        />
+        <AdvanceButton
+          team={visitante}
+          selected={value === visitante.id}
+          onClick={() => onChange(visitante.id)}
+        />
+      </div>
+
+      <p className="text-xs text-slate-400 mt-2">Incluye prórroga y penales</p>
+    </div>
+  );
+}
+
+function AdvanceButton({
+  team,
+  selected,
+  onClick,
+}: {
+  team: { id: number; name: string; code: string; flag_url: string | null };
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition ${
+        selected
+          ? 'border-blue-500 bg-blue-50 text-blue-700'
+          : 'border-slate-200 text-slate-700 hover:border-slate-300'
+      }`}
+    >
+      {team.flag_url ? (
+        <img
+          src={team.flag_url}
+          alt=""
+          className="w-6 h-4 object-cover rounded-sm border border-slate-200 flex-shrink-0"
+        />
+      ) : (
+        <span className="text-xs font-semibold">{team.code}</span>
+      )}
+      <span className="truncate">{team.name}</span>
+      {selected && <Check className="w-4 h-4 flex-shrink-0" />}
+    </button>
+  );
+}
 
 function TeamRow({
   team,

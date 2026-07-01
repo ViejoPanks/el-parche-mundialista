@@ -14,6 +14,10 @@ const savePredictionSchema = z.object({
   predVisitante: z.coerce.number().int().min(0).max(20),
 });
 
+// Fases de eliminación donde aplica el bonus "quién avanza".
+// r32 (16avos) queda excluido por decisión: el bonus arranca en octavos.
+const ADVANCE_PHASES = ['r16', 'qf', 'sf', 'third_place', 'final'];
+
 export type ActionResult<T = unknown> =
   | { success: true; data: T }
   | { success: false; error: string };
@@ -32,7 +36,7 @@ export async function savePrediction(
     return { success: false, error: 'Debes iniciar sesión' };
   }
 
-  // Validar input
+  // Validar marcador
   const parsed = savePredictionSchema.safeParse({
     matchId: formData.get('matchId'),
     predLocal: formData.get('predLocal'),
@@ -48,6 +52,15 @@ export async function savePrediction(
 
   const { matchId, predLocal, predVisitante } = parsed.data;
 
+  // Campo opcional: quién avanza (id de equipo). Vacío/ausente => null.
+  const rawAdvance = formData.get('predWinnerAdvance');
+  const requestedAdvance =
+    rawAdvance !== null && rawAdvance !== '' ? Number(rawAdvance) : null;
+
+  if (requestedAdvance !== null && !Number.isInteger(requestedAdvance)) {
+    return { success: false, error: 'Selección de avance inválida' };
+  }
+
   // Verificar que el partido no esté bloqueado (early return)
   const { data: isLocked } = await supabase.rpc('is_match_locked', {
     p_match_id: matchId,
@@ -60,6 +73,26 @@ export async function savePrediction(
     };
   }
 
+  // Validar el "quién avanza" solo si el usuario mandó uno.
+  // Debe ser una fase de eliminación (octavos+) y uno de los dos equipos.
+  let winnerAdvance: number | null = null;
+  if (requestedAdvance !== null) {
+    const { data: match } = await supabase
+      .from('matches')
+      .select('phase, team_local_id, team_visitante_id')
+      .eq('id', matchId)
+      .single();
+
+    if (
+      match &&
+      ADVANCE_PHASES.includes(match.phase) &&
+      (requestedAdvance === match.team_local_id ||
+        requestedAdvance === match.team_visitante_id)
+    ) {
+      winnerAdvance = requestedAdvance;
+    }
+  }
+
   // Upsert: insertar si no existe, actualizar si existe
   const { error } = await supabase
     .from('predictions')
@@ -69,6 +102,7 @@ export async function savePrediction(
         match_id: matchId,
         pred_local: predLocal,
         pred_visitante: predVisitante,
+        pred_winner_advance: winnerAdvance,
       },
       { onConflict: 'user_id,match_id' }
     );
