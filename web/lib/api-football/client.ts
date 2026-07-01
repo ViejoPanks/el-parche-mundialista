@@ -28,10 +28,10 @@ interface ApiFixture {
     away: number | null;
   };
   score: {
-    penalty: {
-      home: number | null;
-      away: number | null;
-    };
+    halftime: { home: number | null; away: number | null };
+    fulltime: { home: number | null; away: number | null };
+    extratime: { home: number | null; away: number | null };
+    penalty: { home: number | null; away: number | null };
   };
 }
 
@@ -95,6 +95,22 @@ export function getPenaltyWinner(fixture: ApiFixture): number | null {
   if (home > away) return fixture.teams.home.id;
   if (away > home) return fixture.teams.away.id;
   return null;
+}
+
+/**
+ * Determina qué equipo AVANZA de fase (para el bonus "quién pasa").
+ * Usa el marcador FINAL (incluye alargue). Si sigue empatado tras el
+ * alargue, lo definen los penales.
+ */
+export function getAdvanceWinner(fixture: ApiFixture): number | null {
+  const home = fixture.goals.home;
+  const away = fixture.goals.away;
+  if (home !== null && away !== null) {
+    if (home > away) return fixture.teams.home.id;
+    if (away > home) return fixture.teams.away.id;
+  }
+  // Empate en el marcador final → penales
+  return getPenaltyWinner(fixture);
 }
 
 export type { ApiFixture };

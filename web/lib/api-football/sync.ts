@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/api-football/admin-client';
 import {
   fetchAllWorldCupFixtures,
   fetchFinishedFixtures,
-  getPenaltyWinner,
+  getAdvanceWinner,
 } from '@/lib/api-football/client';
 
 /**
@@ -113,22 +113,25 @@ export async function syncResults(): Promise<SyncResult> {
     const ourMatch = matchesByApiId.get(apiFixture.fixture.id);
     if (!ourMatch) continue;
 
-    const goalsLocal = apiFixture.goals.home;
-    const goalsVisitante = apiFixture.goals.away;
+    // Marcador de los 90' (tiempo reglamentario). score.fulltime es el
+    // resultado al minuto 90; apiFixture.goals incluye el alargue.
+    // En fase de grupos ambos coinciden.
+    const goalsLocal = apiFixture.score.fulltime?.home ?? apiFixture.goals.home;
+    const goalsVisitante = apiFixture.score.fulltime?.away ?? apiFixture.goals.away;
 
     if (goalsLocal === null || goalsVisitante === null) continue;
 
-    // Determinar quién pasa de fase (si hubo penales).
-    // Mapear el api_team_id ganador a nuestro team_id.
-    const penaltyWinnerApiId = getPenaltyWinner(apiFixture);
+    // Determinar quién avanza de fase (para el bonus de eliminatorias).
+    // Usa el marcador final (alargue) y, si sigue empatado, penales.
+    const advanceWinnerApiId = getAdvanceWinner(apiFixture);
     let winnerAdvanceTeamId: number | null = null;
 
-    if (penaltyWinnerApiId !== null) {
+    if (advanceWinnerApiId !== null) {
       // Buscar nuestro team_id correspondiente al api_team_id ganador
       const { data: winnerTeam } = await supabase
         .from('teams')
         .select('id')
-        .eq('api_team_id', penaltyWinnerApiId)
+        .eq('api_team_id', advanceWinnerApiId)
         .maybeSingle();
       winnerAdvanceTeamId = winnerTeam?.id ?? null;
     }
